@@ -6,6 +6,8 @@ import os.path
 
 app = Flask(__name__)
 
+superSecretPassword = ''
+
 def doesAGiverHaveThemself(givers, receivers):
 	for i, giver in enumerate(givers):
 		if giver == receivers[i]:
@@ -14,7 +16,7 @@ def doesAGiverHaveThemself(givers, receivers):
 	return True
 
 def doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping):
-	inverseSpouseMapping = {value: key for key, value in spouseMapping.iteritems()}
+	inverseSpouseMapping = {value: key for key, value in spouseMapping.items()}
 
 	for i, receiver in enumerate(receivers):
 		if spouseMapping.get(givers[i]) == receiver:
@@ -44,14 +46,14 @@ def thereIsAValidResult(givers, spouseMapping):
 	return len(givers) > 1 and (not spouseMapping or len(givers) > 3)
 
 def everySpouseIsAParticipant(givers, spouseMapping):
-	for key, value in spouseMapping.iteritems():
+	for key, value in spouseMapping.items():
 		if key not in givers or value not in givers:
 			return False
 
 	return True
 
 def everySpouseIsMarriedToSomeoneElse(spouseMapping):
-	for key, value in spouseMapping.iteritems():
+	for key, value in spouseMapping.items():
 		if key == value:
 			return False
 
@@ -82,22 +84,27 @@ def spouseMappingIsValid(givers, spouseMapping):
 
 @app.route('/clear-results')
 def clearResults():
+	password = request.args.get('password')
+
+	if password != superSecretPassword:
+		return 'You did not say the magic word'
+
 	if not os.path.isfile('results.json'):
 		return 'No results to clear'
 
 	os.remove('results.json')
 	return 'Results were cleared'
 
-@app.route('/show-my-receiver/<giver>')
+@app.route('/who-i-am-giving-to/<giver>')
 def displayReceiver(giver):
 	with open('results.json', 'r') as resultsFile:
 		participantPairs = json.load(resultsFile)['results']
 
 	for pair in participantPairs:
 		if pair.get(giver, None):
-			return 'You have ' + pair[giver]
+			return giver + ' has ' + pair[giver]
 
-	return 'That person is not in the list of results'
+	return 'That person is not in the list :('
 
 @app.route('/generate-results')
 def assignNames():
