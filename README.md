@@ -11,4 +11,4 @@ pip install -r requirements.txt
 gunicorn main:app
 ```
 
-I also used parts of https://www.digitalocean.com/community/tutorials/how-to-set-up-django-with-postgres-nginx-and-gunicorn-on-ubuntu-18-04 for setup
+I also used parts of https://www.digitalocean.com/community/tutorials/how-to-set-up-django-with-postgres-nginx-and-gunicorn-on-ubuntu-18-04 and this section https://docs.ghost.org/api/ghost-cli/knowledgebase/#ssl-for-additional-domains for setup
