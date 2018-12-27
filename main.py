@@ -97,6 +97,9 @@ def clearResults(family):
 
 @app.route('/who-i-am-giving-to/<family>/<giver>')
 def displayReceiver(family, giver):
+	if not os.path.isfile(family + '.json'):
+		return 'That family is not present :('
+	
 	with open(family + '.json', 'r') as resultsFile:
 		participantPairs = json.load(resultsFile)['results']
 
