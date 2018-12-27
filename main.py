@@ -3,6 +3,7 @@ from flask import Flask, request
 import ast
 import json
 import os.path
+import random
 
 app = Flask(__name__)
 
@@ -40,7 +41,7 @@ def createResult(givers, receivers):
 
 def shuffleReceiversUntilValid(givers, receivers, spouseMapping):
 	while not isResultValid(givers, receivers, spouseMapping):
-		shuffle(receivers)
+		shuffle(receivers, random.SystemRandom().random)
 
 def thereIsAValidResult(givers, spouseMapping):
 	return len(givers) > 1 and (not spouseMapping or len(givers) > 3)
