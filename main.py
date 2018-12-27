@@ -100,7 +100,7 @@ def clearResults(family):
 def displayReceiver(family, giver):
 	if not os.path.isfile(family + '.json'):
 		return 'That family is not present :('
-	
+
 	with open(family + '.json', 'r') as resultsFile:
 		participantPairs = json.load(resultsFile)['results']
 
