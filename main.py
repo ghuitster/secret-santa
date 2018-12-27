@@ -82,22 +82,22 @@ def spouseMappingIsValid(givers, spouseMapping):
 
 	return everySpouseIsAParticipant(givers, spouseMapping) and everySpouseIsMarriedToSomeoneElse(spouseMapping) and everySpouseIsMarriedToOnePerson(spouseMapping)
 
-@app.route('/clear-results')
-def clearResults():
+@app.route('/clear-results/<family>')
+def clearResults(family):
 	password = request.args.get('password')
 
 	if password != superSecretPassword:
 		return 'You did not say the magic word'
 
-	if not os.path.isfile('results.json'):
+	if not os.path.isfile(family + '.json'):
 		return 'No results to clear'
 
-	os.remove('results.json')
+	os.remove(family + '.json')
 	return 'Results were cleared'
 
-@app.route('/who-i-am-giving-to/<giver>')
-def displayReceiver(giver):
-	with open('results.json', 'r') as resultsFile:
+@app.route('/who-i-am-giving-to/<family>/<giver>')
+def displayReceiver(family, giver):
+	with open(family + '.json', 'r') as resultsFile:
 		participantPairs = json.load(resultsFile)['results']
 
 	for pair in participantPairs:
@@ -106,14 +106,14 @@ def displayReceiver(giver):
 
 	return 'That person is not in the list :('
 
-@app.route('/generate-results')
-def assignNames():
+@app.route('/generate-results/<family>')
+def assignNames(family):
 	givers = request.args.get('participants')
 
 	if not givers:
 		return 'Participants is a required argument'
 
-	if os.path.isfile('results.json'):
+	if os.path.isfile(family + '.json'):
 		return 'There are already generated results!'
 
 	givers = givers.split(',')
@@ -122,7 +122,7 @@ def assignNames():
 
 	if(spouseMappingIsValid(givers, spouseMapping) and thereAreNoDuplicateParticipants(givers) and thereIsAValidResult(givers, spouseMapping)):
 		shuffleReceiversUntilValid(givers, receivers, spouseMapping)
-		with open('results.json', 'w') as resultsFile:
+		with open(family + '.json', 'w') as resultsFile:
 			json.dump({'results':createResult(givers, receivers)}, resultsFile)
 		return 'Results generated!'
 	else:
