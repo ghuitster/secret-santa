@@ -136,6 +136,5 @@ def assignNames(family):
 def home():
 	return 'Just a boring home page'
 
-
 if __name__ == '__main__':
 	app.run(debug=True)
