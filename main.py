@@ -132,5 +132,10 @@ def assignNames(family):
 	else:
 		return 'That combination of participants and spouses does not have a possible, valid result'
 
+@app.route('/')
+def home():
+	return 'Just a boring home page'
+
+
 if __name__ == '__main__':
 	app.run(debug=True)
