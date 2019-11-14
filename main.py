@@ -31,11 +31,11 @@ def doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping):
 def isResultValid(givers, receivers, spouseMapping):
 	return doesAGiverHaveThemself(givers, receivers) and not (spouseMapping and doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping))
 
-def createResult(givers, receivers):
+def createResult(giverNames, giverEmails, receivers):
 	results = []
 
-	for i, giver in enumerate(givers):
-		results.append({giver:receivers[i]})
+	for i, giver in enumerate(giverNames):
+		results.append({'Name': giver, 'Email': giverEmails[giver], 'Receiver': receivers[i]})
 
 	return results
 
@@ -83,9 +83,21 @@ def spouseMappingIsValid(givers, spouseMapping):
 
 	return everySpouseIsAParticipant(givers, spouseMapping) and everySpouseIsMarriedToSomeoneElse(spouseMapping) and everySpouseIsMarriedToOnePerson(spouseMapping)
 
-def lower_dict_keys(d):
-	new_dict = dict((k.lower(), v) for k, v in d.items())
-	return new_dict
+def extract_giver_names(participants):
+	giverNames = []
+
+	for participant in participants:
+		giverNames.append(participant['Name'])
+
+	return giverNames
+
+def extract_giver_emails(participants):
+	giverEmails = {}
+
+	for participant in participants:
+		giverEmails[participant['Name']] = participant['Email']
+
+	return giverEmails
 
 @app.route('/clear-results/<family>', methods=['DELETE'])
 def clearResults(family):
@@ -109,30 +121,29 @@ def displayReceiver(family, giver):
 		participantPairs = json.load(resultsFile)['results']
 
 	for pair in participantPairs:
-		pair = lower_dict_keys(pair)
-
-		if pair.get(giver.lower(), None):
-			return giver + ' has ' + pair[giver.lower()]
+		if pair.get('Name').lower() == giver.lower():
+			return giver + ' has ' + pair['Receiver']
 
 	return 'That person is not in the list :('
 
 @app.route('/generate-results/<family>', methods=['POST'])
 def assignNames(family):
-	givers = request.json.get('participants', None)
+	giverNames = extract_giver_names(request.json.get('participants', None))
+	giverEmails = extract_giver_emails(request.json.get('participants', None))
 
-	if not givers:
+	if not giverNames:
 		return 'Participants is a required argument'
 
 	if os.path.isfile(family + '.json'):
 		return 'There are already generated results!'
 
-	receivers = list(givers)
+	receivers = list(giverNames)
 	spouseMapping = request.json.get('spouses', None)
 
-	if(spouseMappingIsValid(givers, spouseMapping) and thereAreNoDuplicateParticipants(givers) and thereIsAValidResult(givers, spouseMapping)):
-		shuffleReceiversUntilValid(givers, receivers, spouseMapping)
+	if(spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping)):
+		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping)
 		with open(family + '.json', 'w') as resultsFile:
-			json.dump({'results':createResult(givers, receivers)}, resultsFile)
+			json.dump({'results': createResult(giverNames, giverEmails, receivers)}, resultsFile)
 		return 'Results generated!'
 	else:
 		return 'That combination of participants and spouses does not have a possible, valid result'
@@ -143,3 +154,4 @@ def home():
 
 if __name__ == '__main__':
 	app.run(debug=True)
+
