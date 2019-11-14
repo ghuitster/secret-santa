@@ -83,6 +83,10 @@ def spouseMappingIsValid(givers, spouseMapping):
 
 	return everySpouseIsAParticipant(givers, spouseMapping) and everySpouseIsMarriedToSomeoneElse(spouseMapping) and everySpouseIsMarriedToOnePerson(spouseMapping)
 
+def lower_dict_keys(d):
+	new_dict = dict((k.lower(), v) for k, v in d.items())
+	return new_dict
+
 @app.route('/clear-results/<family>', methods=['DELETE'])
 def clearResults(family):
 	password = request.args.get('password')
@@ -105,8 +109,10 @@ def displayReceiver(family, giver):
 		participantPairs = json.load(resultsFile)['results']
 
 	for pair in participantPairs:
-		if pair.get(giver, None):
-			return giver + ' has ' + pair[giver]
+		pair = lower_dict_keys(pair)
+
+		if pair.get(giver.lower(), None):
+			return giver + ' has ' + pair[giver.lower()]
 
 	return 'That person is not in the list :('
 
