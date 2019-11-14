@@ -83,7 +83,7 @@ def spouseMappingIsValid(givers, spouseMapping):
 
 	return everySpouseIsAParticipant(givers, spouseMapping) and everySpouseIsMarriedToSomeoneElse(spouseMapping) and everySpouseIsMarriedToOnePerson(spouseMapping)
 
-@app.route('/clear-results/<family>')
+@app.route('/clear-results/<family>', methods=['DELETE'])
 def clearResults(family):
 	password = request.args.get('password')
 
@@ -110,9 +110,9 @@ def displayReceiver(family, giver):
 
 	return 'That person is not in the list :('
 
-@app.route('/generate-results/<family>')
+@app.route('/generate-results/<family>', methods=['POST'])
 def assignNames(family):
-	givers = request.args.get('participants')
+	givers = request.json.get('participants', None)
 
 	if not givers:
 		return 'Participants is a required argument'
@@ -120,9 +120,8 @@ def assignNames(family):
 	if os.path.isfile(family + '.json'):
 		return 'There are already generated results!'
 
-	givers = givers.split(',')
 	receivers = list(givers)
-	spouseMapping = ast.literal_eval(request.args.get('spouses', 'None'))
+	spouseMapping = request.json.get('spouses', None)
 
 	if(spouseMappingIsValid(givers, spouseMapping) and thereAreNoDuplicateParticipants(givers) and thereIsAValidResult(givers, spouseMapping)):
 		shuffleReceiversUntilValid(givers, receivers, spouseMapping)
