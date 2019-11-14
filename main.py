@@ -4,10 +4,14 @@ import ast
 import json
 import os.path
 import random
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import config
 
 app = Flask(__name__)
 
-superSecretPassword = ''
+superSecretPassword = config.secretPassword
 
 def doesAGiverHaveThemself(givers, receivers):
 	for i, giver in enumerate(givers):
@@ -34,8 +38,12 @@ def isResultValid(givers, receivers, spouseMapping):
 def createResult(giverNames, giverEmails, receivers):
 	results = []
 
-	for i, giver in enumerate(giverNames):
-		results.append({'Name': giver, 'Email': giverEmails[giver], 'Receiver': receivers[i]})
+	if request.json['SendMail']:
+		for i, giver in enumerate(giverNames):
+			results.append({'Name': giver, 'Email': giverEmails[giver], 'Receiver': receivers[i]})
+	else:
+		for i, giver in enumerate(giverNames):
+			results.append({'Name': giver, 'Receiver': receivers[i]})
 
 	return results
 
@@ -83,7 +91,7 @@ def spouseMappingIsValid(givers, spouseMapping):
 
 	return everySpouseIsAParticipant(givers, spouseMapping) and everySpouseIsMarriedToSomeoneElse(spouseMapping) and everySpouseIsMarriedToOnePerson(spouseMapping)
 
-def extract_giver_names(participants):
+def extractGiverNames(participants):
 	giverNames = []
 
 	for participant in participants:
@@ -91,13 +99,44 @@ def extract_giver_names(participants):
 
 	return giverNames
 
-def extract_giver_emails(participants):
+def extractGiverEmails(participants):
+	if not request.json['SendMail']:
+		return None
+
 	giverEmails = {}
 
 	for participant in participants:
 		giverEmails[participant['Name']] = participant['Email']
 
 	return giverEmails
+
+def emailResults(family):
+	with open(family + '.json', 'r') as resultsFile:
+		participantPairs = json.load(resultsFile)['results']
+
+	server = smtplib.SMTP_SSL(config.mailServer, 465)
+	server.ehlo()
+	sentFrom = config.fromAddress
+	server.login(sentFrom, config.mailPassword)
+
+	for pair in participantPairs:
+		emailResult(pair, server, sentFrom)
+
+	server.close()
+
+def emailResult(pair, server, sentFrom):
+	to = pair['Email']
+	subject = 'Secret Santa'
+	body = pair['Name'] + ' is giving to ' + pair['Receiver']
+
+	msg = MIMEMultipart()
+	msg['From'] = sentFrom
+	msg['To'] = to
+	msg['Subject'] = subject
+
+	msg.attach(MIMEText(body, 'plain'))
+
+	server.sendmail(sentFrom, to, msg.as_string())
 
 @app.route('/clear-results/<family>', methods=['DELETE'])
 def clearResults(family):
@@ -121,15 +160,15 @@ def displayReceiver(family, giver):
 		participantPairs = json.load(resultsFile)['results']
 
 	for pair in participantPairs:
-		if pair.get('Name').lower() == giver.lower():
-			return giver + ' has ' + pair['Receiver']
+		if pair['Name'].lower() == giver.lower():
+			return giver + ' is giving to ' + pair['Receiver']
 
 	return 'That person is not in the list :('
 
 @app.route('/generate-results/<family>', methods=['POST'])
 def assignNames(family):
-	giverNames = extract_giver_names(request.json.get('participants', None))
-	giverEmails = extract_giver_emails(request.json.get('participants', None))
+	giverNames = extractGiverNames(request.json.get('participants', None))
+	giverEmails = extractGiverEmails(request.json.get('participants', None))
 
 	if not giverNames:
 		return 'Participants is a required argument'
@@ -140,10 +179,14 @@ def assignNames(family):
 	receivers = list(giverNames)
 	spouseMapping = request.json.get('spouses', None)
 
-	if(spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping)):
+	if spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping):
 		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping)
 		with open(family + '.json', 'w') as resultsFile:
 			json.dump({'results': createResult(giverNames, giverEmails, receivers)}, resultsFile)
+
+		if request.json['SendMail']:
+			emailResults(family)
+
 		return 'Results generated!'
 	else:
 		return 'That combination of participants and spouses does not have a possible, valid result'
@@ -154,4 +197,3 @@ def home():
 
 if __name__ == '__main__':
 	app.run(debug=True)
-
