@@ -89,7 +89,7 @@ def lower_dict_keys(d):
 
 @app.route('/clear-results/<family>', methods=['DELETE'])
 def clearResults(family):
-	password = request.args.get('password')
+	password = request.json.get('password', None)
 
 	if password != superSecretPassword:
 		return 'You did not say the magic word'
