@@ -40,7 +40,6 @@ def getPriorYearReceiver(giver, priorYear):
 	return None
 
 def doesAGiverHaveWhoTheyHadLastYear(givers, receivers, priorYear):
-	print(priorYear)
 	for i, giver in enumerate(givers):
 		if getPriorYearReceiver(giver, priorYear) == receivers[i]:
 			return True
