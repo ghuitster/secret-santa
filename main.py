@@ -16,9 +16,9 @@ superSecretPassword = config.secretPassword
 def doesAGiverHaveThemself(givers, receivers):
 	for i, giver in enumerate(givers):
 		if giver == receivers[i]:
-			return False
+			return True
 
-	return True
+	return False
 
 def doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping):
 	inverseSpouseMapping = {value: key for key, value in spouseMapping.items()}
@@ -32,13 +32,28 @@ def doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping):
 
 	return False
 
-def isResultValid(givers, receivers, spouseMapping):
-	return doesAGiverHaveThemself(givers, receivers) and not (spouseMapping and doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping))
+def getPriorYearReceiver(giver, priorYear):
+	for giverEntry in priorYear['results']:
+		if giverEntry['Name'] == giver:
+			return giverEntry['Receiver']
+
+	return None
+
+def doesAGiverHaveWhoTheyHadLastYear(givers, receivers, priorYear):
+	print(priorYear)
+	for i, giver in enumerate(givers):
+		if getPriorYearReceiver(giver, priorYear) == receivers[i]:
+			return True
+
+	return False
+
+def isResultValid(givers, receivers, spouseMapping, priorYear):
+	return not doesAGiverHaveThemself(givers, receivers) and not (spouseMapping and doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping)) and not (priorYear and doesAGiverHaveWhoTheyHadLastYear(givers, receivers, priorYear))
 
 def createResult(giverNames, giverEmails, receivers):
 	results = []
 
-	if request.json['SendMail']:
+	if request.json['sendEmail']:
 		for i, giver in enumerate(giverNames):
 			results.append({'Name': giver, 'Email': giverEmails[giver], 'Receiver': receivers[i]})
 	else:
@@ -47,8 +62,8 @@ def createResult(giverNames, giverEmails, receivers):
 
 	return results
 
-def shuffleReceiversUntilValid(givers, receivers, spouseMapping):
-	while not isResultValid(givers, receivers, spouseMapping):
+def shuffleReceiversUntilValid(givers, receivers, spouseMapping, priorYear):
+	while not isResultValid(givers, receivers, spouseMapping, priorYear):
 		shuffle(receivers, random.SystemRandom().random)
 
 def thereIsAValidResult(givers, spouseMapping):
@@ -100,7 +115,7 @@ def extractGiverNames(participants):
 	return giverNames
 
 def extractGiverEmails(participants):
-	if not request.json['SendMail']:
+	if not request.json['sendEmail']:
 		return None
 
 	giverEmails = {}
@@ -179,12 +194,20 @@ def assignNames(family):
 	receivers = list(giverNames)
 	spouseMapping = request.json.get('spouses', None)
 
+	priorYearFileName = request.json.get('priorYearFileName', None)
+
+	priorYear = None
+
+	if priorYearFileName:
+		with open(priorYearFileName, 'r') as priorYearFile:
+			priorYear = json.load(priorYearFile)
+
 	if spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping):
-		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping)
+		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping, priorYear)
 		with open(family + '.json', 'w') as resultsFile:
 			json.dump({'results': createResult(giverNames, giverEmails, receivers)}, resultsFile)
 
-		if request.json['SendMail']:
+		if request.json['sendEmail']:
 			emailResults(family)
 
 		return 'Results generated!'
