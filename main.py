@@ -33,7 +33,6 @@ def doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping):
 	return False
 
 def getPriorYearReceiver(giver, priorYear):
-	print(priorYear)
 	for giverEntry in priorYear['results']:
 		if giverEntry['Name'] == giver:
 			return giverEntry['Receiver']
@@ -41,7 +40,6 @@ def getPriorYearReceiver(giver, priorYear):
 	return None
 
 def doesAGiverHaveWhoTheyHadInPriorYears(givers, receivers, priorYears):
-	print(priorYears)
 	for priorYear in priorYears:
 		for i, giver in enumerate(givers):
 			if getPriorYearReceiver(giver, priorYear) == receivers[i]:
@@ -199,14 +197,11 @@ def assignNames(family):
 	priorYearsFileNames = request.json.get('priorYearsFileNames', None)
 
 	priorYears = []
-	print(priorYearsFileNames)
 
 	if priorYearsFileNames:
 		for priorYearFileName in priorYearsFileNames:
 			with open(priorYearFileName, 'r') as priorYearFile:
 				priorYears.append(json.load(priorYearFile))
-
-	print(priorYears)
 
 	if spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping):
 		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping, priorYears)
