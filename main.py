@@ -39,15 +39,16 @@ def getPriorYearReceiver(giver, priorYear):
 
 	return None
 
-def doesAGiverHaveWhoTheyHadLastYear(givers, receivers, priorYear):
-	for i, giver in enumerate(givers):
-		if getPriorYearReceiver(giver, priorYear) == receivers[i]:
-			return True
+def doesAGiverHaveWhoTheyHadInPriorYears(givers, receivers, priorYears):
+	for priorYear in priorYears:
+		for i, giver in enumerate(givers):
+			if getPriorYearReceiver(giver, priorYear) == receivers[i]:
+				return True
 
 	return False
 
-def isResultValid(givers, receivers, spouseMapping, priorYear):
-	return not doesAGiverHaveThemself(givers, receivers) and not (spouseMapping and doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping)) and not (priorYear and doesAGiverHaveWhoTheyHadLastYear(givers, receivers, priorYear))
+def isResultValid(givers, receivers, spouseMapping, priorYears):
+	return not doesAGiverHaveThemself(givers, receivers) and not (spouseMapping and doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping)) and not (priorYears and doesAGiverHaveWhoTheyHadInPriorYears(givers, receivers, priorYears))
 
 def createResult(giverNames, giverEmails, receivers):
 	results = []
@@ -61,8 +62,8 @@ def createResult(giverNames, giverEmails, receivers):
 
 	return results
 
-def shuffleReceiversUntilValid(givers, receivers, spouseMapping, priorYear):
-	while not isResultValid(givers, receivers, spouseMapping, priorYear):
+def shuffleReceiversUntilValid(givers, receivers, spouseMapping, priorYears):
+	while not isResultValid(givers, receivers, spouseMapping, priorYears):
 		shuffle(receivers, random.SystemRandom().random)
 
 def thereIsAValidResult(givers, spouseMapping):
@@ -193,16 +194,17 @@ def assignNames(family):
 	receivers = list(giverNames)
 	spouseMapping = request.json.get('spouses', None)
 
-	priorYearFileName = request.json.get('priorYearFileName', None)
+	priorYearsFileNames = request.json.get('priorYearsFileNames', None)
 
-	priorYear = None
+	priorYears = []
 
-	if priorYearFileName:
-		with open(priorYearFileName, 'r') as priorYearFile:
-			priorYear = json.load(priorYearFile)
+	if priorYearsFileNames:
+		for priorYearFileName in priorYearsFileNames:
+			with open(priorYearFileName, 'r') as priorYearFile:
+				priorYears.append(json.load(priorYearFile))
 
 	if spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping):
-		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping, priorYear)
+		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping, priorYears)
 		with open(family + '.json', 'w') as resultsFile:
 			json.dump({'results': createResult(giverNames, giverEmails, receivers)}, resultsFile)
 
