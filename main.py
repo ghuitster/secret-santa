@@ -11,8 +11,6 @@ import config
 
 app = Flask(__name__)
 
-superSecretPassword = config.secretPassword
-
 def doesAGiverHaveThemself(givers, receivers):
 	for i, giver in enumerate(givers):
 		if giver == receivers[i]:
@@ -152,19 +150,6 @@ def emailResult(pair, server, sentFrom):
 	msg.attach(MIMEText(body, 'plain'))
 
 	server.sendmail(sentFrom, to, msg.as_string())
-
-@app.route('/clear-results/<family>', methods=['DELETE'])
-def clearResults(family):
-	password = request.json.get('password', None)
-
-	if password != superSecretPassword:
-		return 'You did not say the magic word'
-
-	if not os.path.isfile(family + '.json'):
-		return 'No results to clear'
-
-	os.remove(family + '.json')
-	return 'Results were cleared'
 
 @app.route('/who-i-am-giving-to/<family>/<giver>')
 def displayReceiver(family, giver):
