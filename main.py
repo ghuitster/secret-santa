@@ -151,20 +151,6 @@ def emailResult(pair, server, sentFrom):
 
 	server.sendmail(sentFrom, to, msg.as_string())
 
-@app.route('/who-i-am-giving-to/<family>/<giver>')
-def displayReceiver(family, giver):
-	if not os.path.isfile(family + '.json'):
-		return 'That family is not present :('
-
-	with open(family + '.json', 'r') as resultsFile:
-		participantPairs = json.load(resultsFile)['results']
-
-	for pair in participantPairs:
-		if pair['Name'].lower() == giver.lower():
-			return giver + ' is giving to ' + pair['Receiver']
-
-	return 'That person is not in the list :('
-
 @app.route('/generate-results/<family>', methods=['POST'])
 def assignNames(family):
 	giverNames = extractGiverNames(request.json.get('participants', None))
