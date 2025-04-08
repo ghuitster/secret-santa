@@ -1,6 +1,4 @@
 from random import shuffle
-from flask import Flask, request
-import ast
 import json
 import os.path
 import random
@@ -8,10 +6,6 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import config
-
-app = Flask(__name__)
-
-superSecretPassword = config.secretPassword
 
 def doesAGiverHaveThemself(givers, receivers):
 	for i, giver in enumerate(givers):
@@ -50,10 +44,10 @@ def doesAGiverHaveWhoTheyHadInPriorYears(givers, receivers, priorYears):
 def isResultValid(givers, receivers, spouseMapping, priorYears):
 	return not doesAGiverHaveThemself(givers, receivers) and not (spouseMapping and doesAGiverHaveTheirSpouse(givers, receivers, spouseMapping)) and not (priorYears and doesAGiverHaveWhoTheyHadInPriorYears(givers, receivers, priorYears))
 
-def createResult(giverNames, giverEmails, receivers):
+def createResult(giverNames, giverEmails, receivers, sendEmail):
 	results = []
 
-	if request.json['sendEmail']:
+	if sendEmail:
 		for i, giver in enumerate(giverNames):
 			results.append({'Name': giver, 'Email': giverEmails[giver], 'Receiver': receivers[i]})
 	else:
@@ -64,7 +58,7 @@ def createResult(giverNames, giverEmails, receivers):
 
 def shuffleReceiversUntilValid(givers, receivers, spouseMapping, priorYears):
 	while not isResultValid(givers, receivers, spouseMapping, priorYears):
-		shuffle(receivers, random.SystemRandom().random)
+		shuffle(receivers)
 
 def thereIsAValidResult(givers, spouseMapping):
 	return len(givers) > 1 and (not spouseMapping or len(givers) > 3)
@@ -114,8 +108,8 @@ def extractGiverNames(participants):
 
 	return giverNames
 
-def extractGiverEmails(participants):
-	if not request.json['sendEmail']:
+def extractGiverEmails(participants, sendEmail):
+	if not sendEmail:
 		return None
 
 	giverEmails = {}
@@ -153,48 +147,19 @@ def emailResult(pair, server, sentFrom):
 
 	server.sendmail(sentFrom, to, msg.as_string())
 
-@app.route('/clear-results/<family>', methods=['DELETE'])
-def clearResults(family):
-	password = request.json.get('password', None)
-
-	if password != superSecretPassword:
-		return 'You did not say the magic word'
-
-	if not os.path.isfile(family + '.json'):
-		return 'No results to clear'
-
-	os.remove(family + '.json')
-	return 'Results were cleared'
-
-@app.route('/who-i-am-giving-to/<family>/<giver>')
-def displayReceiver(family, giver):
-	if not os.path.isfile(family + '.json'):
-		return 'That family is not present :('
-
-	with open(family + '.json', 'r') as resultsFile:
-		participantPairs = json.load(resultsFile)['results']
-
-	for pair in participantPairs:
-		if pair['Name'].lower() == giver.lower():
-			return giver + ' is giving to ' + pair['Receiver']
-
-	return 'That person is not in the list :('
-
-@app.route('/generate-results/<family>', methods=['POST'])
-def assignNames(family):
-	giverNames = extractGiverNames(request.json.get('participants', None))
-	giverEmails = extractGiverEmails(request.json.get('participants', None))
-
-	if not giverNames:
-		return 'Participants is a required argument'
+def assignNames():
+	family = config.family
+	sendEmail = config.sendEmail
+	giverNames = extractGiverNames(config.participants)
+	giverEmails = extractGiverEmails(config.participants, sendEmail)
 
 	if os.path.isfile(family + '.json'):
 		return 'There are already generated results!'
 
 	receivers = list(giverNames)
-	spouseMapping = request.json.get('spouses', None)
+	spouseMapping = config.spouses
 
-	priorYearsFileNames = request.json.get('priorYearsFileNames', None)
+	priorYearsFileNames = config.priorYearsFileNames
 
 	priorYears = []
 
@@ -206,18 +171,14 @@ def assignNames(family):
 	if spouseMappingIsValid(giverNames, spouseMapping) and thereAreNoDuplicateParticipants(giverNames) and thereIsAValidResult(giverNames, spouseMapping):
 		shuffleReceiversUntilValid(giverNames, receivers, spouseMapping, priorYears)
 		with open(family + '.json', 'w') as resultsFile:
-			json.dump({'results': createResult(giverNames, giverEmails, receivers)}, resultsFile)
+			json.dump({'results': createResult(giverNames, giverEmails, receivers, sendEmail)}, resultsFile)
 
-		if request.json['sendEmail']:
+		if sendEmail:
 			emailResults(family)
 
 		return 'Results generated!'
 	else:
 		return 'That combination of participants and spouses does not have a possible, valid result'
 
-@app.route('/')
-def home():
-	return 'Just a boring home page'
-
 if __name__ == '__main__':
-	app.run(debug=True)
+	print(assignNames())
